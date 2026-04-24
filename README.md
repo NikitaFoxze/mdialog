@@ -213,6 +213,16 @@ DialogPagin_IsValidLine(playerid);
 
 ## Default usage
 ```Pawn
+// If you want to change the text of the buttons, just make these defines.
+#define MDIALOG_MESSAGE_TEXT_NEXT "››"
+#define MDIALOG_MESSAGE_TEXT_BACK "‹‹"
+#define MDIALOG_LIST_TEXT_NEXT "{A0A0A0}>>>"
+#define MDIALOG_LIST_TEXT_BACK "{A0A0A0}<<<"
+#define MDIALOG_TEXT_CLOSE "X"
+#define MDIALOG_TEXT_SELECT "O"
+
+#include "mdialog.inc"
+
 new nicknames[][MAX_PLAYER_NAME + 1] = 
 	{
 		"Name1", "Name2", "Name3", "Name4", "Name5",
