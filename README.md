@@ -131,7 +131,7 @@ BUTTON_NO = No
 ```
 
 # Pagination
-Dialog pagination is available. You can implement simple and complex pagination, as well as query the database and receive responses directly during dialog creation. `zlang` is supported.
+Dialog pagination is available. You can implement simple and complex pagination, as well as query the database and receive responses directly during dialog creation. `zlang` is supported. `mysql vR41-4` is supported.
 
 Supported dialog styles: `DIALOG_STYLE_MSGBOX`, `DIALOG_STYLE_LIST`, `DIALOG_STYLE_TABLIST`, `DIALOG_STYLE_TABLIST_HEADERS`.
 
