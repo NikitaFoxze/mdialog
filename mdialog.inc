@@ -12,6 +12,25 @@
 #define _mdialog_included
 
 /*
+	MySQL
+*/
+
+#tryinclude "a_mysql"
+#tryinclude <a_mysql>
+
+#if !defined MDIALOG_USE_MYSQL
+	#if defined mysql_format
+		#define MDIALOG_USE_MYSQL
+	#endif
+#endif
+
+#if defined MDIALOG_USE_MYSQL
+	#if !defined mysql_format
+		#undef MDIALOG_USE_MYSQL
+	#endif
+#endif
+
+/*
 	Defines
 */
 
@@ -22,6 +41,10 @@
 
 #if !defined MAX_FUNCTION_NAME
 	#define MAX_FUNCTION_NAME 32
+#endif
+
+#if !defined MAX_LENGTH_FORMAT
+	#define MAX_LENGTH_FORMAT 4096
 #endif
 
 #if !defined MDIALOG_MAX_LINES
@@ -36,17 +59,88 @@
 	#define MDIALOG_MIN_DIALOG_WIDTH 200.0
 #endif
 
+#if !defined MDIALOG_COLOR_NONE
+	#define MDIALOG_COLOR_NONE 0x00000000
+#endif
+
+#if !defined MDIALOG_MAX_FORMAT_STRING
+	#define MDIALOG_MAX_FORMAT_STRING 144
+#endif
+
 #if !defined MDIALOG_MAX_CAPTION_SIZE
 	#define MDIALOG_MAX_CAPTION_SIZE 64
 #endif
 
+#if !defined MDIALOG_MAX_LINE_SIZE 
+	#define MDIALOG_MAX_LINE_SIZE 288
+#endif
+
 #if !defined MDIALOG_MAX_INFO_SIZE
-	#define MDIALOG_MAX_INFO_SIZE 4096
+	#define MDIALOG_MAX_INFO_SIZE MAX_LENGTH_FORMAT
+#endif
+
+#if !defined MDIALOG_MAX_COLOR_SIZE
+	#define MDIALOG_MAX_COLOR_SIZE 8
+#endif
+
+// pagination
+#if !defined MDIALOG_PAGIN_INVALID_LINE_ID
+	#define MDIALOG_PAGIN_INVALID_LINE_ID (-1)
+#endif
+
+#if !defined MDIALOG_PAGIN_MAX_STATIC_LINES
+	#define MDIALOG_PAGIN_MAX_STATIC_LINES 10
+#endif
+
+#if !defined MDIALOG_PAGIN_MAX_LINE_NAME
+	#define MDIALOG_PAGIN_MAX_LINE_NAME 144
+#endif
+
+#if !defined MDIALOG_PAGIN_STYLE_MESSAGE
+	#define MDIALOG_PAGIN_STYLE_MESSAGE \
+		DIALOG_STYLE_MSGBOX
+#endif
+
+#if !defined MDIALOG_PAGIN_STYLE_LIST
+	#define MDIALOG_PAGIN_STYLE_LIST \
+		DIALOG_STYLE_LIST, \
+		DIALOG_STYLE_TABLIST, \
+		DIALOG_STYLE_TABLIST_HEADERS
+#endif
+
+// pagination texts
+#if !defined MDIALOG_MESSAGE_TEXT_NEXT
+	#define MDIALOG_MESSAGE_TEXT_NEXT "››"
+#endif
+
+#if !defined MDIALOG_MESSAGE_TEXT_BACK
+	#define MDIALOG_MESSAGE_TEXT_BACK "‹‹"
+#endif
+
+#if !defined MDIALOG_LIST_TEXT_NEXT
+	#define MDIALOG_LIST_TEXT_NEXT "{A0A0A0}>>>"
+#endif
+
+#if !defined MDIALOG_LIST_TEXT_BACK
+	#define MDIALOG_LIST_TEXT_BACK "{A0A0A0}<<<"
+#endif
+
+#if !defined MDIALOG_TEXT_CLOSE
+	#define MDIALOG_TEXT_CLOSE "X"
+#endif
+
+#if !defined MDIALOG_TEXT_SELECT
+	#define MDIALOG_TEXT_SELECT "O"
 #endif
 
 #if defined MDIALOG_ZLANG_MODE
 	#if !defined MDIALOG_MAX_BUTTON_SIZE
 		#define MDIALOG_MAX_BUTTON_SIZE 16
+	#endif
+
+	#if MDIALOG_MAX_FORMAT_STRING > MAX_LANG_FORMAT_STRING
+		#undef MDIALOG_MAX_FORMAT_STRING
+		#define MDIALOG_MAX_FORMAT_STRING MAX_LANG_FORMAT_STRING
 	#endif
 
 	#if MDIALOG_MAX_CAPTION_SIZE > MAX_LANG_VALUE_STRING
@@ -62,6 +156,12 @@
 	#if MDIALOG_MAX_BUTTON_SIZE > MAX_LANG_VALUE_STRING
 		#undef MDIALOG_MAX_BUTTON_SIZE
 		#define MDIALOG_MAX_BUTTON_SIZE MAX_LANG_VALUE_STRING
+	#endif
+#endif
+
+#if defined MDIALOG_USE_MYSQL
+	#if !defined MDIALOG_MAX_QUERY_SIZE
+		#define MDIALOG_MAX_QUERY_SIZE MAX_LENGTH_FORMAT
 	#endif
 #endif
 
@@ -93,6 +193,10 @@ native MDialogFix_ShowPlayerDialog(playerid, dialogid, style, const caption[], c
 #endif
 
 // internal defines
+#define DialogInit:%0(%1) \
+	forward dit_%0(%1); \
+	public dit_%0(%1)
+
 #define DialogCreate:%0(%1) \
 	forward dcr_%0(%1); \
 	public dcr_%0(%1)
@@ -107,14 +211,57 @@ native MDialogFix_ShowPlayerDialog(playerid, dialogid, style, const caption[], c
 
 #define Dialog: #
 
+#define dialog_args<%0> {Float, _}:...
+#define dialog_start<%0> (dialog_:(%0))
+
 /*
 	Enums
 */
+
+enum E_MDIALOG_DATA {
+	e_mdFunction[MAX_FUNCTION_NAME + 1],
+	e_mdOpeningFunction[MAX_FUNCTION_NAME + 1],
+	e_mdType,
+	e_mdStyle,
+	bool:e_mdIsOpen,
+	bool:e_mdIsInit,
+};
+
+enum E_MDIALOG_PAGINATION {
+	e_mpListOffset,
+	e_mpTotalLines,
+	e_mpTotalLinesReserve,
+	e_mpLinesOnPage,
+	e_mpStaticLinesOnPage,
+	e_mpMaxLinesOnPage,
+	bool:e_mpIsAddedNoneLine,
+
+#if defined MDIALOG_USE_MYSQL
+	MySQL:e_mpMySQLHandle,
+#endif
+};
 
 enum E_MDIALOG_TAG {
 	E_MDIALOG_TAG_NONE = -1,
 	E_MDIALOG_TAG_CENTER,
 	E_MDIALOG_TAG_RIGHT,
+};
+
+enum {
+	MDIALOG_TYPE_DEFAULT = 0,
+	MDIALOG_TYPE_PAGINATION,
+};
+
+enum {
+	MDIALOG_BUTTON_1 = 0,
+	MDIALOG_BUTTON_2,
+};
+
+enum {
+	MDIALOG_PAGIN_OPEN = 0,
+	MDIALOG_PAGIN_NEXT,
+	MDIALOG_PAGIN_BACK,
+	MDIALOG_PAGIN_CURRENT,
 };
 
 /*
@@ -361,19 +508,43 @@ static
 #endif
 
 static
-	bool:gIsDialogOpen[MAX_PLAYERS char],
-	gDialogFunction[MAX_PLAYERS][MAX_FUNCTION_NAME];
+	gDialogData[MAX_PLAYERS][E_MDIALOG_DATA],
+	gPaginData[MAX_PLAYERS][E_MDIALOG_PAGINATION];
+
+static
+	gTotalLinesCountID[MAX_PLAYERS],
+	gTotalLinesCountName[MAX_PLAYERS],
+	gAddedLinesCountID[MAX_PLAYERS],
+	gAddedLinesCountName[MAX_PLAYERS],
+	gListLineID[MAX_PLAYERS][MDIALOG_MAX_LINES],
+	gListLineName[MAX_PLAYERS][MDIALOG_MAX_LINES][MDIALOG_PAGIN_MAX_LINE_NAME + 1],
+	gSelectLineID[MAX_PLAYERS],
+	gSelectLineName[MAX_PLAYERS][MDIALOG_PAGIN_MAX_LINE_NAME + 1];
+
+static
+	gStrDialogBuffer[MAX_PLAYERS][MDIALOG_MAX_INFO_SIZE + 1];
+
+#if defined MDIALOG_USE_MYSQL
+
+static
+	gStrDialogQuery[MAX_PLAYERS][MDIALOG_MAX_QUERY_SIZE + 1];
+
+#endif
 
 /*
 	OnGameModeInit
 */
 
-#if !defined MDIALOG_DISABLE_TAGS
-
 public OnGameModeInit()
 {
-	for (new tag = 0; tag < sizeof(gTag); tag++) {
-		gTagLength[E_MDIALOG_TAG:tag] = strlen(gTag[E_MDIALOG_TAG:tag]);
+	#if !defined MDIALOG_DISABLE_TAGS
+		for (new tag = 0; tag < sizeof(gTag); tag++) {
+			gTagLength[E_MDIALOG_TAG:tag] = strlen(gTag[E_MDIALOG_TAG:tag]);
+		}
+	#endif
+
+	for (new i = 0; i < MAX_PLAYERS; i++) {
+		_MDialogPagin_ClearData(i);
 	}
 
 	#if defined MDialog_OnGameModeInit
@@ -393,8 +564,6 @@ public OnGameModeInit()
 	forward MDialog_OnGameModeInit();
 #endif
 
-#endif
-
 /*
 	ShowPlayerDialog
 */
@@ -403,7 +572,7 @@ stock MDialog_ShowPlayerDialog(playerid, dialogid, style, const caption[], const
 {
 	if (dialogid != -1 && dialogid != MDIALOG_DIALOG_ID) {
 		if (Dialog_IsOpen(playerid)) {
-			Dialog_Close(playerid, gDialogFunction[playerid][4], false);
+			Dialog_Close(playerid, gDialogData[playerid][e_mdFunction][4], false);
 		}
 	}
 
@@ -424,13 +593,13 @@ stock MDialog_ShowPlayerDialog(playerid, dialogid, style, const caption[], const
 static stock _Dialog_Open(playerid, const function[], style, const caption[], const info[], const button1[], const button2[])
 {
 	if (Dialog_IsOpen(playerid)) {
-		Dialog_Interrupt(playerid, gDialogFunction[playerid][4]);
+		Dialog_Interrupt(playerid, gDialogData[playerid][e_mdFunction][4]);
 	}
 
-	gIsDialogOpen{playerid} = true;
+	gDialogData[playerid][e_mdIsOpen] = true;
+	gDialogData[playerid][e_mdStyle] = style; 
 
-	gDialogFunction[playerid] = "dre_";
-	strcat(gDialogFunction[playerid], function, sizeof(gDialogFunction[]));
+	format(gDialogData[playerid][e_mdFunction], MAX_FUNCTION_NAME + 1, "dre_%s", function);
 
 	switch (style) {
 		case DIALOG_STYLE_MSGBOX, DIALOG_STYLE_INPUT, DIALOG_STYLE_PASSWORD: {
@@ -492,13 +661,20 @@ stock Dialog_Open(playerid, const function[], style, const caption[], const info
 
 stock Dialog_Close(playerid, const function[] = "", showDialog = true)
 {
-	gIsDialogOpen{playerid} = false;
-	gDialogFunction[playerid][0] = '\0';
+	gDialogData[playerid][e_mdIsOpen] =
+	gDialogData[playerid][e_mdIsInit] = false;
+
+	gDialogData[playerid][e_mdFunction][0] =
+	gDialogData[playerid][e_mdOpeningFunction][0] = '\0';
 
 	Dialog_Interrupt(playerid, function);
 
 	if (showDialog) {
+	#if defined _INC_open_mp
+		return HidePlayerDialog(playerid);
+	#else
 		return MDialogFix_ShowPlayerDialog(playerid, -1, DIALOG_STYLE_MSGBOX, " ", " ", " ", "");
+	#endif
 	}
 
 	return 1;
@@ -521,10 +697,10 @@ stock Dialog_Interrupt(playerid, const function[])
 stock Dialog_IsOpen(playerid, const function[] = "")
 {
 	if (isnull(function)) {
-		return _:gIsDialogOpen{playerid};
+		return _:gDialogData[playerid][e_mdIsOpen];
 	}
 
-	if (!isnull(gDialogFunction[playerid]) && gIsDialogOpen{playerid} && strcmp(gDialogFunction[playerid][4], function) == 0) {
+	if (!isnull(gDialogData[playerid][e_mdFunction]) && gDialogData[playerid][e_mdIsOpen] && strcmp(gDialogData[playerid][e_mdFunction][4], function) == 0) {
 		return 1;
 	}
 
@@ -537,9 +713,64 @@ stock Dialog_IsOpen(playerid, const function[] = "")
 
 stock Dialog_Show(playerid, const function[])
 {
+	_MDialog_strcpy(gDialogData[playerid][e_mdOpeningFunction], function);
+
+	if (_Dialog_Init(playerid, function)) {
+		return _Dialog_Show(playerid, function);
+	}
+	else {
+		return 0;
+	}
+}
+
+static stock _Dialog_Show(playerid, const function[])
+{
 	new call_func[MAX_FUNCTION_NAME char] = !"dcr_";
 	strcat(call_func, function);
+
+	_MDialog_InitDialogData(playerid);
 	return CallLocalFunction(call_func, "d", playerid);
+}
+
+/*
+	Dialog init
+*/
+
+static stock _Dialog_Init(playerid, const function[])
+{
+	if (gDialogData[playerid][e_mdIsInit]) {
+		return 1;
+	}
+
+	new call_func[MAX_FUNCTION_NAME char] = !"dit_";
+	strcat(call_func, function);
+
+	gDialogData[playerid][e_mdType] = MDIALOG_TYPE_DEFAULT;
+
+	CallLocalFunction(call_func, "d", playerid);
+	gDialogData[playerid][e_mdIsInit] = true;
+
+	return _MDialog_ProcessInit(playerid);
+}
+
+static stock _MDialog_ProcessInit(playerid)
+{
+	switch (gDialogData[playerid][e_mdType]) {
+		case MDIALOG_TYPE_PAGINATION: {
+			_MDialogPagin_ProcessPagination(playerid, MDIALOG_PAGIN_OPEN);
+			return 0;
+		}
+	}
+	return 1;
+}
+
+static stock _MDialog_InitDialogData(playerid)
+{
+	switch (gDialogData[playerid][e_mdType]) {
+		case MDIALOG_TYPE_PAGINATION: {
+			_MDialogPagin_InitDialogData(playerid);
+		}
+	}
 }
 
 /*
@@ -548,12 +779,12 @@ stock Dialog_Show(playerid, const function[])
 
 stock Dialog_GetCurrent(playerid, function[], const size = sizeof(function))
 {
-	if (gDialogFunction[playerid][0] == '\0') {
+	if (gDialogData[playerid][e_mdFunction][0] == '\0') {
 		function[0] = '\0';
 		return 0;
 	}
 
-	return _MDialog_strcpy(function, gDialogFunction[playerid][4], size);
+	return _MDialog_strcpy(function, gDialogData[playerid][e_mdFunction][4], size);
 }
 
 /*
@@ -639,6 +870,25 @@ stock Dialog_MessageEx(playerid, const response[], const caption[], const info[]
 	OnDialogResponse
 */
 
+static stock _MDialog_ProcessResponse(playerid, &response, listitem)
+{
+	switch (gDialogData[playerid][e_mdType]) {
+		case MDIALOG_TYPE_PAGINATION: {
+			return _MDialogPagin_ProcessButtons(playerid, response, listitem);
+		}
+	}
+	return 1;
+}
+
+static stock _MDialog_OnDialogResponse(playerid, response, listitem, const inputtext[])
+{
+	gDialogData[playerid][e_mdIsOpen] =
+	gDialogData[playerid][e_mdIsInit] = false;
+
+	gDialogData[playerid][e_mdOpeningFunction][0] = '\0';
+	return CallLocalFunction(gDialogData[playerid][e_mdFunction], "ddds", playerid, response, listitem, inputtext);
+}
+
 public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 {
 	static temp[128];
@@ -647,8 +897,10 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (dialogid == MDIALOG_DIALOG_ID) {
 		if (temp[0] == '\0') {
 			if (Dialog_IsOpen(playerid)) {
-				gIsDialogOpen{playerid} = false;
-				return CallLocalFunction(gDialogFunction[playerid], "ddds", playerid, response, listitem, "\1");
+				if (!_MDialog_ProcessResponse(playerid, response, listitem)) {
+					return 0;
+				}
+				return _MDialog_OnDialogResponse(playerid, response, listitem, "\1");
 			}
 			return 0;
 		}
@@ -660,8 +912,10 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 		}
 
 		if (Dialog_IsOpen(playerid)) {
-			gIsDialogOpen{playerid} = false;
-			return CallLocalFunction(gDialogFunction[playerid], "ddds", playerid, response, listitem, temp);
+			if (!_MDialog_ProcessResponse(playerid, response, listitem)) {
+				return 0;
+			}
+			return _MDialog_OnDialogResponse(playerid, response, listitem, temp);
 		}
 		return 0;
 	}
@@ -684,8 +938,696 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 #endif
 
 /*
+	MDialog_OnAnswerToQuery
+*/
+
+#if defined MDIALOG_USE_MYSQL
+
+forward MDialog_OnAnswerToQuery(playerid, const function[]);
+public MDialog_OnAnswerToQuery(playerid, const function[])
+{
+	if (strcmp(gDialogData[playerid][e_mdOpeningFunction], function) == 1) {
+		return;
+	}
+
+	_Dialog_Show(playerid, function);
+}
+
+#endif
+
+/*
+	Pagination
+*/
+
+stock DialogPagin_Init(playerid, max_lines_on_page)
+{
+	if (max_lines_on_page == 0 || max_lines_on_page > MDIALOG_MAX_LINES) {
+		max_lines_on_page = MDIALOG_MAX_LINES;
+	}
+
+	_MDialogPagin_ResetData(playerid);
+
+	gDialogData[playerid][e_mdType] = MDIALOG_TYPE_PAGINATION;
+	gPaginData[playerid][e_mpMaxLinesOnPage] = max_lines_on_page;
+	return 1;
+}
+
+#if defined MDIALOG_USE_MYSQL
+
+stock DialogPagin_SetQuery(playerid, MySQL:handle, const query[], const length = sizeof(query), dialog_args<>)
+{
+	if (handle == MYSQL_INVALID_HANDLE) {
+		printf("mdialog: incorrect handle %i", _:handle);
+		return 0;
+	}
+
+	if (isnull(query)) {
+		printf("mdialog: incorrect query");
+		return 0;
+	}
+
+	gPaginData[playerid][e_mpMySQLHandle] = handle;
+
+	if (numargs() > 4) {
+		Dialog_format(gStrDialogQuery[playerid], length, query, dialog_start<4>);
+	}
+	else {
+		_MDialog_strcpy(gStrDialogQuery[playerid], query);
+	}
+	return 1;
+}
+
+static stock _MDialogPagin_LoadItems(playerid, handle, offset)
+{
+	static
+		query[MDIALOG_MAX_QUERY_SIZE + 1];
+
+	mysql_format(MySQL:handle, query, sizeof(query),
+		"%s LIMIT %i, %i",
+		gStrDialogQuery[playerid], offset, gPaginData[playerid][e_mpMaxLinesOnPage]);
+
+	mysql_tquery(MySQL:handle, query, "MDialog_OnAnswerToQuery", "ds", playerid, gDialogData[playerid][e_mdOpeningFunction]);
+}
+
+#endif
+
+stock DialogPagin_IsValidLine(playerid)
+{
+#if defined MDIALOG_USE_MYSQL
+	if (gPaginData[playerid][e_mpMySQLHandle] != MYSQL_INVALID_HANDLE) {
+		return 1;
+	}
+#endif
+
+	gPaginData[playerid][e_mpTotalLines]++;
+
+	if (gPaginData[playerid][e_mpLinesOnPage] >= gPaginData[playerid][e_mpMaxLinesOnPage]) {
+		return 0;
+	}
+
+	if (!_MDialogPagin_IsValidLine(playerid, gPaginData[playerid][e_mpTotalLines] - 1)) {
+		return 0;
+	}
+
+	return 1;
+}
+
+static stock _MDialogPagin_IsValidLine(playerid, total_lines)
+{
+	static
+		list_offset,
+		max_lines_on_page;
+
+	list_offset = gPaginData[playerid][e_mpListOffset];
+	max_lines_on_page = gPaginData[playerid][e_mpMaxLinesOnPage];
+
+	return (total_lines >= list_offset) && (total_lines < (list_offset + max_lines_on_page));
+}
+
+stock DialogPagin_GetTotalItems(playerid)
+{
+	if (gPaginData[playerid][e_mpTotalLines] > 0) {
+		return gPaginData[playerid][e_mpTotalLines];
+	}
+
+	return gPaginData[playerid][e_mpTotalLinesReserve];
+}
+
+stock DialogPagin_SaveLineID(playerid, abstractid)
+{
+	// Checking to see if the `DialogPagin_IsValidLine` function is called before it is called
+	if (gPaginData[playerid][e_mpTotalLines] <= 0) {
+		gTotalLinesCountID[playerid]++;
+
+		if (!_MDialogPagin_IsValidLine(playerid, gTotalLinesCountID[playerid] - 1)) {
+			return 0;
+		}
+	}
+
+	gListLineID[playerid][gAddedLinesCountID[playerid]] = abstractid;
+	gAddedLinesCountID[playerid]++;
+	return 1;
+}
+
+stock DialogPagin_SaveLineName(playerid, const abstract_name[])
+{
+	// Checking to see if the `DialogPagin_IsValidLine` function is called before it is called
+	if (gPaginData[playerid][e_mpTotalLines] <= 0) {
+		gTotalLinesCountName[playerid]++;
+
+		if (!_MDialogPagin_IsValidLine(playerid, gTotalLinesCountName[playerid] - 1)) {
+			return 0;
+		}
+	}
+
+	_MDialog_strcpy(gListLineName[playerid][gAddedLinesCountName[playerid]], abstract_name);
+	gAddedLinesCountName[playerid]++;
+	return 1;
+}
+
+stock DialogPagin_GetSelectLineID(playerid)
+{
+	return gSelectLineID[playerid];
+}
+
+stock DialogPagin_GetSelectLineName(playerid, output[], const size = sizeof(output))
+{
+	_MDialog_strcpy(output, gSelectLineName[playerid], size);
+}
+
+stock DialogPagin_AddTablist(playerid, const text[], dialog_args<>)
+{
+	static
+		temp[MDIALOG_MAX_FORMAT_STRING + 1];
+
+#if defined MDIALOG_ZLANG_MODE
+	Lang_GetPlayerText(playerid, text, temp);
+#else
+	_MDialog_strcpy(temp, text);
+#endif
+
+	if (numargs() > 3) {
+		Dialog_format(temp, sizeof(temp), temp, dialog_start<3>);
+	}
+
+	strcat(temp, "\n");
+	strins(gStrDialogBuffer[playerid], temp, 0);
+}
+
+stock DialogPagin_AddColor(playerid, const color[])
+{
+	strcat(gStrDialogBuffer[playerid], color);
+}
+
+stock DialogPagin_AddLine(playerid, color, const text[], dialog_args<>)
+{
+	// Checking to see if the `DialogPagin_IsValidLine` function is called before it is called
+	if (gPaginData[playerid][e_mpTotalLines] <= 0) {
+		gPaginData[playerid][e_mpTotalLinesReserve]++;
+
+		if (!_MDialogPagin_IsValidLine(playerid, gPaginData[playerid][e_mpTotalLinesReserve] - 1)) {
+			return 0;
+		}
+	}
+
+	gPaginData[playerid][e_mpLinesOnPage]++;
+
+	static
+		temp[MDIALOG_MAX_LINE_SIZE + 1];
+
+#if defined MDIALOG_ZLANG_MODE
+	Lang_GetPlayerText(playerid, text, temp);
+#else
+	_MDialog_strcpy(temp, text);
+#endif
+
+	if (numargs() > 3) {
+		Dialog_format(temp, sizeof(temp), temp, dialog_start<3>);
+	}
+
+	if (color != MDIALOG_COLOR_NONE) {
+		static
+			previous_color,
+			string_nums[MDIALOG_MAX_COLOR_SIZE + 11],
+			string_color[MDIALOG_MAX_COLOR_SIZE + 1];
+
+		// Optimization
+		if (previous_color != color) {
+			previous_color = color;
+			_MDialog_IntToHex(string_color, color);
+		}
+
+		format(string_nums, sizeof(string_nums),
+			"%s[%i] ",
+			string_color,
+			gPaginData[playerid][e_mpListOffset] + gPaginData[playerid][e_mpLinesOnPage]);
+
+		strins(temp, string_nums, 0);
+	}
+
+	if (gPaginData[playerid][e_mpStaticLinesOnPage] > 0) {
+		if (!gPaginData[playerid][e_mpIsAddedNoneLine]) {
+			strins(temp, " \n", 0);
+			gPaginData[playerid][e_mpIsAddedNoneLine] = true;
+		}
+	}
+
+	strcat(temp, "\n");
+	strcat(gStrDialogBuffer[playerid], temp);
+	return 1;
+}
+
+stock DialogPagin_AddStaticLine(playerid, color, const text[], dialog_args<>)
+{
+	if (!DialogPagin_IsFirstPage(playerid)) {
+		return 0;
+	}
+
+	if (gPaginData[playerid][e_mpStaticLinesOnPage] >= MDIALOG_PAGIN_MAX_STATIC_LINES) {
+		return 0;
+	}
+
+	gPaginData[playerid][e_mpStaticLinesOnPage]++;
+
+	static
+		temp[MDIALOG_MAX_LINE_SIZE + 1];
+
+#if defined MDIALOG_ZLANG_MODE
+	Lang_GetPlayerText(playerid, text, temp);
+#else
+	_MDialog_strcpy(temp, text);
+#endif
+
+	if (numargs() > 3) {
+		Dialog_format(temp, sizeof(temp), temp, dialog_start<3>);
+	}
+
+	if (color != MDIALOG_COLOR_NONE) {
+		static
+			previous_color,
+			string_nums[MDIALOG_MAX_COLOR_SIZE + 11],
+			string_color[MDIALOG_MAX_COLOR_SIZE + 1];
+
+		// Optimization
+		if (previous_color != color) {
+			previous_color = color;
+			_MDialog_IntToHex(string_color, color);
+		}
+
+		format(string_nums, sizeof(string_nums),
+			"%s[%i] ",
+			string_color,
+			gPaginData[playerid][e_mpStaticLinesOnPage]);
+
+		strins(temp, string_nums, 0);
+	}
+
+	strcat(temp, "\n");
+	strcat(gStrDialogBuffer[playerid], temp);
+	return 1;
+}
+
+stock DialogPagin_IsFirstPage(playerid)
+{
+	return (gPaginData[playerid][e_mpListOffset] <= 0);
+}
+
+stock DialogPagin_IsLastPage(playerid)
+{
+	return ((gPaginData[playerid][e_mpListOffset] + gPaginData[playerid][e_mpMaxLinesOnPage]) >= gPaginData[playerid][e_mpTotalLines]);
+}
+
+stock DialogPagin_Open(playerid, const function[], style, const caption[], dialog_args<>)
+{
+	if (gDialogData[playerid][e_mdType] != MDIALOG_TYPE_PAGINATION) {
+		return 0;
+	}
+
+	if (gPaginData[playerid][e_mpLinesOnPage] <= 0 && gPaginData[playerid][e_mpStaticLinesOnPage] <= 0) {
+		strcat(gStrDialogBuffer[playerid], " \n");
+	}
+
+	if (gPaginData[playerid][e_mpTotalLines] <= 0) {
+		gPaginData[playerid][e_mpTotalLines] = gPaginData[playerid][e_mpTotalLinesReserve];
+	}
+
+	switch (style) {
+		case MDIALOG_PAGIN_STYLE_MESSAGE: {}
+		case MDIALOG_PAGIN_STYLE_LIST: {
+			if (gPaginData[playerid][e_mpLinesOnPage] > 0) {
+				// Button Next
+				if (!DialogPagin_IsLastPage(playerid)) {
+					#if defined MDIALOG_ZLANG_MODE
+						static
+							buttonNext[MDIALOG_MAX_FORMAT_STRING + 1];
+
+						if (Lang_GetPlayerText(playerid,
+							MDIALOG_LIST_TEXT_NEXT,
+							buttonNext)) {
+
+							strins(buttonNext, "\n", 0);
+							strcat(gStrDialogBuffer[playerid], buttonNext);
+						}
+						else {
+							strcat(gStrDialogBuffer[playerid], "\n"MDIALOG_LIST_TEXT_NEXT"");
+						}
+					#else
+						strcat(gStrDialogBuffer[playerid], "\n"MDIALOG_LIST_TEXT_NEXT"");
+					#endif
+				}
+
+				// Button Back
+				if (!DialogPagin_IsFirstPage(playerid)) {
+					#if defined MDIALOG_ZLANG_MODE
+						static
+							buttonBack[MDIALOG_MAX_FORMAT_STRING + 1];
+
+						if (Lang_GetPlayerText(playerid,
+							MDIALOG_LIST_TEXT_BACK,
+							buttonBack)) {
+
+							strins(buttonBack, "\n", 0);
+							strcat(gStrDialogBuffer[playerid], buttonBack);
+						}
+						else {
+							strcat(gStrDialogBuffer[playerid], "\n"MDIALOG_LIST_TEXT_BACK"");
+						}
+					#else
+						strcat(gStrDialogBuffer[playerid], "\n"MDIALOG_LIST_TEXT_BACK"");
+					#endif
+				}
+			}
+		}
+		// Invalid
+		default: {
+			return 0;
+		}
+	}
+
+	static
+		string_caption[MDIALOG_MAX_FORMAT_STRING + 1];
+
+#if defined MDIALOG_ZLANG_MODE
+	Lang_GetPlayerText(playerid, caption, string_caption);
+#else
+	_MDialog_strcpy(string_caption, caption);
+#endif
+
+	if (numargs() > 4) {
+		Dialog_format(string_caption, sizeof(string_caption), string_caption, dialog_start<4>);
+	}
+
+	static
+		button1[MDIALOG_MAX_FORMAT_STRING + 1],
+		button2[MDIALOG_MAX_FORMAT_STRING + 1];
+
+	_MDialogPagin_GetButtonText(playerid, style, MDIALOG_BUTTON_1, button1);
+	_MDialogPagin_GetButtonText(playerid, style, MDIALOG_BUTTON_2, button2);
+
+	return _Dialog_Open(playerid, function, style, string_caption,
+		gStrDialogBuffer[playerid],
+		button1,
+		button2);
+}
+
+static stock _MDialogPagin_InitDialogData(playerid)
+{
+	gPaginData[playerid][e_mpTotalLines] =
+	gPaginData[playerid][e_mpTotalLinesReserve] =
+	gPaginData[playerid][e_mpLinesOnPage] =
+	gPaginData[playerid][e_mpStaticLinesOnPage] = 0;
+
+	gPaginData[playerid][e_mpIsAddedNoneLine] = false;
+
+	gTotalLinesCountID[playerid] =
+	gTotalLinesCountName[playerid] =
+	gAddedLinesCountID[playerid] =
+	gAddedLinesCountName[playerid] = 0;
+
+	gStrDialogBuffer[playerid][0] = '\0';
+
+#if defined MDIALOG_USE_MYSQL
+	if (gPaginData[playerid][e_mpMySQLHandle] != MYSQL_INVALID_HANDLE) {
+		if (!cache_get_value_int(0, "total_count", gPaginData[playerid][e_mpTotalLines])) {
+			printf("mdialog: the [total_count] column is not loaded");
+		}
+	}
+#endif
+}
+
+static stock _MDialogPagin_ProcessButtons(playerid, &response, listitem)
+{
+	if (gPaginData[playerid][e_mpLinesOnPage] <= 0 && gPaginData[playerid][e_mpStaticLinesOnPage] <= 0) {
+		response = 0;
+		return 1;
+	}
+
+	switch (gDialogData[playerid][e_mdStyle]) {
+		case MDIALOG_PAGIN_STYLE_MESSAGE: {
+			if (response) {
+				if (!DialogPagin_IsFirstPage(playerid)) {
+					_MDialogPagin_ProcessPagination(playerid, MDIALOG_PAGIN_BACK);
+					return 0;
+				}
+				else {
+					response = 0;
+				}
+			}
+			else {
+				if (!DialogPagin_IsLastPage(playerid)) {
+					_MDialogPagin_ProcessPagination(playerid, MDIALOG_PAGIN_NEXT);
+					return 0;
+				}
+				else {
+					response = 0;
+				}
+			}
+		}
+		case MDIALOG_PAGIN_STYLE_LIST: {
+			if (!response) {
+				return 1;
+			}
+
+			static
+				itemsOnPage,
+				staticLines,
+				buttonPosition;
+
+			itemsOnPage = gPaginData[playerid][e_mpLinesOnPage];
+			staticLines = gPaginData[playerid][e_mpStaticLinesOnPage];
+			buttonPosition = staticLines > 0 ? itemsOnPage + staticLines + 1 : itemsOnPage + staticLines;
+
+			if (listitem == buttonPosition) {
+				if (!DialogPagin_IsLastPage(playerid)) {
+					_MDialogPagin_ProcessPagination(playerid, MDIALOG_PAGIN_NEXT);
+				}
+				else {
+					_MDialogPagin_ProcessPagination(playerid, MDIALOG_PAGIN_BACK);
+				}
+				return 0;
+			}
+			else if (listitem == buttonPosition + 1) {
+				_MDialogPagin_ProcessPagination(playerid, MDIALOG_PAGIN_BACK);
+				return 0;
+			}
+
+			static
+				index;
+
+			if (staticLines > 0) {
+				if (listitem < staticLines) {
+					return 1;
+				}
+				else if (listitem == staticLines) {
+					_MDialogPagin_ProcessPagination(playerid, MDIALOG_PAGIN_CURRENT);
+					return 0;
+				}
+
+				index = listitem - staticLines - 1;
+			}
+			else {
+				index = listitem;
+			}
+
+			if (gAddedLinesCountID[playerid] > 0) {
+				gSelectLineID[playerid] = gListLineID[playerid][index];
+			}
+
+			if (gAddedLinesCountName[playerid] > 0) {
+				_MDialog_strcpy(gSelectLineName[playerid], gListLineName[playerid][index]);
+			}
+		}
+	}
+	return 1;
+}
+
+static stock _MDialogPagin_ResetData(playerid)
+{
+#if defined MDIALOG_USE_MYSQL
+	gPaginData[playerid][e_mpMySQLHandle] = MYSQL_INVALID_HANDLE;
+#else
+	#pragma unused playerid
+#endif
+}
+
+static stock _MDialogPagin_ClearData(playerid)
+{
+	_MDialogPagin_ResetData(playerid);
+
+	gPaginData[playerid][e_mpListOffset] =
+	gPaginData[playerid][e_mpTotalLines] =
+	gPaginData[playerid][e_mpTotalLinesReserve] =
+	gPaginData[playerid][e_mpLinesOnPage] =
+	gPaginData[playerid][e_mpStaticLinesOnPage] =
+	gPaginData[playerid][e_mpMaxLinesOnPage] = 0;
+
+	gPaginData[playerid][e_mpIsAddedNoneLine] = false;
+
+	gTotalLinesCountID[playerid] =
+	gTotalLinesCountName[playerid] =
+	gAddedLinesCountID[playerid] =
+	gAddedLinesCountName[playerid] = 0;
+
+	gSelectLineID[playerid] = MDIALOG_PAGIN_INVALID_LINE_ID;
+	gSelectLineName[playerid][0] = '\0';
+
+	for(new i = 0; i < MDIALOG_MAX_LINES; i++) {
+		gListLineID[playerid][i] = MDIALOG_PAGIN_INVALID_LINE_ID;
+		gListLineName[playerid][i][0] = '\0';
+	}
+
+	gStrDialogBuffer[playerid][0] = '\0';
+
+#if defined MDIALOG_USE_MYSQL
+	gStrDialogQuery[playerid][0] = '\0';
+#endif
+}
+
+static stock _MDialogPagin_ProcessPagination(playerid, actionid)
+{
+	switch (actionid) {
+		case MDIALOG_PAGIN_OPEN: {
+			gPaginData[playerid][e_mpListOffset] = 0;
+		}
+		case MDIALOG_PAGIN_NEXT: {
+			gPaginData[playerid][e_mpListOffset] += gPaginData[playerid][e_mpMaxLinesOnPage];
+		}
+		case MDIALOG_PAGIN_BACK: {
+			gPaginData[playerid][e_mpListOffset] -= gPaginData[playerid][e_mpMaxLinesOnPage];
+
+			if (gPaginData[playerid][e_mpListOffset] < 0) {
+				gPaginData[playerid][e_mpListOffset] = 0;
+			}
+		}
+	}
+
+#if defined MDIALOG_USE_MYSQL
+	if (gPaginData[playerid][e_mpMySQLHandle] != MYSQL_INVALID_HANDLE) {
+		_MDialogPagin_LoadItems(playerid,
+			_:gPaginData[playerid][e_mpMySQLHandle],
+			gPaginData[playerid][e_mpListOffset]);
+
+		return;
+	}
+#endif
+
+	_Dialog_Show(playerid, gDialogData[playerid][e_mdOpeningFunction]);
+}
+
+static stock _MDialogPagin_GetButtonText(playerid, style, buttonid, output[], const size = sizeof(output))
+{
+	switch (style) {
+		case MDIALOG_PAGIN_STYLE_MESSAGE: {
+			if (buttonid == MDIALOG_BUTTON_1) {
+				if (!DialogPagin_IsFirstPage(playerid)) {
+				#if defined MDIALOG_ZLANG_MODE
+					if (!Lang_GetPlayerText(playerid,
+						MDIALOG_MESSAGE_TEXT_BACK,
+						output, size)) {
+
+						_MDialog_strcpy(output, MDIALOG_MESSAGE_TEXT_BACK, size);
+					}
+				#else
+					_MDialog_strcpy(output, MDIALOG_MESSAGE_TEXT_BACK, size);
+				#endif
+				}
+				else {
+				#if defined MDIALOG_ZLANG_MODE
+					if (!Lang_GetPlayerText(playerid,
+						MDIALOG_TEXT_CLOSE,
+						output, size)) {
+
+						_MDialog_strcpy(output, MDIALOG_TEXT_CLOSE, size);
+					}
+				#else
+					_MDialog_strcpy(output, MDIALOG_TEXT_CLOSE, size);
+				#endif
+				}
+			}
+			else {
+				if (DialogPagin_IsLastPage(playerid)) {
+					if (gPaginData[playerid][e_mpListOffset] > 0) {
+					#if defined MDIALOG_ZLANG_MODE
+						if (!Lang_GetPlayerText(playerid,
+							MDIALOG_TEXT_CLOSE,
+							output, size)) {
+							
+							_MDialog_strcpy(output, MDIALOG_TEXT_CLOSE, size);
+						}
+					#else
+						_MDialog_strcpy(output, MDIALOG_TEXT_CLOSE, size);
+					#endif
+					}
+					else {
+						output[0] = '\0';
+					}
+				}
+				else {
+				#if defined MDIALOG_ZLANG_MODE
+					if (!Lang_GetPlayerText(playerid,
+						MDIALOG_MESSAGE_TEXT_NEXT,
+						output, size)) {
+						
+						_MDialog_strcpy(output, MDIALOG_MESSAGE_TEXT_NEXT, size);
+					}
+				#else
+					_MDialog_strcpy(output, MDIALOG_MESSAGE_TEXT_NEXT, size);
+				#endif
+				}
+			}
+		}
+		case MDIALOG_PAGIN_STYLE_LIST: {
+			if (gPaginData[playerid][e_mpLinesOnPage] > 0 || gPaginData[playerid][e_mpStaticLinesOnPage] > 0) {
+				if (buttonid == MDIALOG_BUTTON_1) {
+				#if defined MDIALOG_ZLANG_MODE
+					if (!Lang_GetPlayerText(playerid,
+						MDIALOG_TEXT_SELECT,
+						output, size)) {
+
+						_MDialog_strcpy(output, MDIALOG_TEXT_SELECT, size);
+					}
+				#else
+					_MDialog_strcpy(output, MDIALOG_TEXT_SELECT, size);
+				#endif
+				}
+				else {
+				#if defined MDIALOG_ZLANG_MODE
+					if (!Lang_GetPlayerText(playerid,
+						MDIALOG_TEXT_CLOSE,
+						output, size)) {
+
+						_MDialog_strcpy(output, MDIALOG_TEXT_CLOSE, size);
+					}
+				#else
+					_MDialog_strcpy(output, MDIALOG_TEXT_CLOSE, size);
+				#endif
+				}
+			}
+			else {
+				if (buttonid == MDIALOG_BUTTON_1) {
+				#if defined MDIALOG_ZLANG_MODE
+					if (!Lang_GetPlayerText(playerid,
+						MDIALOG_TEXT_CLOSE,
+						output, size)) {
+
+						_MDialog_strcpy(output, MDIALOG_TEXT_CLOSE, size);
+					}
+				#else
+					_MDialog_strcpy(output, MDIALOG_TEXT_CLOSE, size);
+				#endif
+				}
+				else {
+					output[0] = '\0';
+				}
+			}
+		}
+	}
+}
+
+/*
 	_MDialog_ProcessTags
 */
+
 #if !defined MDIALOG_DISABLE_TAGS
 
 static stock _MDialog_ProcessTags(const info[], result_info[], const size = sizeof(result_info))
@@ -850,6 +1792,11 @@ static stock _MDialog_strcpy(result[], const source[], const size = sizeof(resul
 	return strcat(result, source, size);
 }
 
+static stock _MDialog_IntToHex(result[], color, const size = sizeof(result))
+{
+	format(result, size, "{%02x%02x%02x}", color & 0xFF, (color >> 16) & 0xFF, (color >> 8) & 0xFF);
+}
+
 /*
 	strlen
 */
@@ -869,3 +1816,72 @@ stock MDialog_strlen(const string[])
 #endif
 
 #define strlen MDialog_strlen
+
+// taken from YSI
+stock Dialog_format(out[], size, const fmat[], dialog_:STATIC_ARGS)
+{
+	static
+		YSI_g_sHeap,
+		YSI_g_sStack,
+		YSI_g_sArgCount,
+		YSI_g_sArgs[5];
+
+	//P:C(if (_:STATIC_ARGS < 1) P:W("No static args found, please add a dummy local"););
+	// Get the number of parameters.
+	#emit LOAD.S.alt   STATIC_ARGS
+	#emit DEC.alt      // 2 - n
+	#emit SHL.C.alt    2
+	// "alt" now contains the number of static arguments in bytes - 4.
+
+	// Get the previous parameter count.
+	#emit LOAD.S.pri   0
+	#emit ADD.C        8
+	#emit LOAD.I
+	#emit SUB
+	#emit ADD.C        8
+	#emit STOR.pri     YSI_g_sArgCount // "format"s parameter count.
+
+	// Get the address of the arguments we are replacing.
+	#emit LOAD.S.pri   0
+	#emit ADD
+
+	// Copy them to our temporary buffer.
+	#emit CONST.alt    YSI_g_sArgs
+	#emit MOVS         16 // (n + 1) * 4
+
+	// Go to the new "top" of the stack.
+	#emit STACK        0
+	#emit STOR.alt     YSI_g_sStack    // Store it.
+	#emit ADD.C        16 // (n + 1) * 4
+	#emit SCTRL        4
+
+	// "frm" is still valid.
+	#emit PUSH.S       fmat
+	#emit PUSH.S       size
+	#emit PUSH.S       out
+	#emit PUSH         YSI_g_sArgCount // Push the parameter count.
+
+	// Modify the heap to hold "locals".
+	#emit HEAP         0
+	#emit STOR.alt     YSI_g_sHeap
+	#emit LCTRL        4
+	#emit SCTRL        2
+
+	// Call the function.
+	#emit SYSREQ.C     format
+	#emit STOR.pri     YSI_g_sArgCount
+
+	// Copy the data back.
+	#emit LOAD.pri     YSI_g_sHeap
+	#emit SCTRL        2
+	#emit STACK        0
+	#emit CONST.pri    YSI_g_sArgs
+	#emit MOVS         16
+	#emit LOAD.pri     YSI_g_sStack
+	#emit SCTRL        4
+
+	#emit LOAD.pri     YSI_g_sArgCount
+	#emit RETN
+
+	return 0;
+}
